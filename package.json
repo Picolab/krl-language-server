@@ -1,0 +1,20 @@
+{
+	"name": "krl-language-server",
+	"description": "Basic KRL Language Server",
+	"version": "1.0.0",
+	"author": "Picolab",
+	"license": "MIT",
+	"engines": {
+		"node": "*"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Picolab/krl-language-server"
+	},
+	"dependencies": {
+		"krl-compiler": "^0.51.1",
+		"krl-parser": "^0.51.1",
+		"vscode-languageserver": "^4.4.2"
+	},
+	"scripts": {}
+}
