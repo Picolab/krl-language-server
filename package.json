@@ -19,6 +19,8 @@
 		"vscode-languageserver": "^4.4.2"
 	},
 	"scripts": {
+		"compile": "tsc -b",
+		"test": "npm run compile && node ./out/test/testHelper.js"
 	},
 	"bin": {
 		"krl-language-server" :"./out/server.js"
