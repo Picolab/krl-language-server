@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ------------------------------------------------------------------------------------------ */
+#!/usr/bin/env node
 
 import {
 	createConnection,
@@ -310,7 +307,7 @@ connection.onCompletion(
 		let context: CompletionContext | undefined = completionParams.context
 		let textDocumentID: TextDocumentIdentifier = completionParams.textDocument
 		// If a dot is the trigger, we want to return operators in our suggestions
-		let dotPrecedes = false
+		let dotPrecedes : boolean = false
 		if (context) {
 			let triggerKind: CompletionTriggerKind = context.triggerKind
 			let triggerChar: string | undefined = context.triggerCharacter
