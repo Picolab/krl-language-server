@@ -13,6 +13,7 @@ ruleset h {
   select when a a
   	pre {
       i = 1
+      i = 2
 	  }
   }
   
