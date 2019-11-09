@@ -1,17 +1,7 @@
 import * as assert from 'assert';
-import { getTestFiles } from './testHelper'
+import { getTestFile } from './testHelper'
 import { TextDocument, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { getDiagnostics } from '../diagnostics';
-
-const testFileMap = getTestFiles()
-
-function getTestFile(fileName : string) : never | TextDocument {
-	let document = testFileMap.get(fileName) 
-	if (document == undefined) {
-		return assert.fail("Failed to get test KRL document")
-	}
-	return document
-}
 
 describe('Should do error checking', () => {
 	
