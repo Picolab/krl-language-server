@@ -1,4 +1,4 @@
-import { CompletionItem, CompletionItemKind, TextDocumentPositionParams, Position, CompletionParams, InsertTextFormat } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, TextDocumentPositionParams, Position, CompletionParams, InsertTextFormat, CompletionContext, TextDocumentIdentifier, CompletionTriggerKind } from 'vscode-languageserver';
 import { isObject } from 'util';
 
 // Add descriptions later
@@ -131,8 +131,20 @@ const krlStructureSuggestions : CompletionItem[] = [
 	}
 ]
 
-export function getCompletions(completionParams : CompletionParams, dotPrecedes : Boolean) : CompletionItem[] {
-	let cursorPos: Position = completionParams.position
+export function getCompletions(completionParams : CompletionParams) : CompletionItem[] {
+	
+	let context: CompletionContext | undefined = completionParams.context
+		// If a dot is the trigger, we want to return operators in our suggestions
+		let dotPrecedes : boolean = false
+		if (context) {
+			let triggerKind: CompletionTriggerKind = context.triggerKind
+			let triggerChar: string | undefined = context.triggerCharacter
+			if (triggerKind == CompletionTriggerKind.TriggerCharacter && triggerChar == '.') {
+				dotPrecedes = true
+			}
+		}
+	
+	// let cursorPos: Position = completionParams.position
 	let suggestions: CompletionItem[] = []
 	suggestions = suggestions.concat(krlStructureSuggestions)
 	if (dotPrecedes) {

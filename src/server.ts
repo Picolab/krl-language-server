@@ -4,29 +4,14 @@ import {
 	createConnection,
 	TextDocuments,
 	TextDocument,
-	Diagnostic,
-	DiagnosticSeverity,
 	ProposedFeatures,
 	InitializeParams,
 	DidChangeConfigurationNotification,
 	CompletionItem,
-	CompletionItemKind,
-	TextDocumentPositionParams,
-	RequestHandler,
-	DocumentSymbolParams,
 	SymbolInformation,
 	TextDocumentIdentifier,
-	SymbolKind,
-	Position,
-	Range,
-	DocumentSymbolRequest,
 	TextDocumentItem,
-	TextEdit,
-	CompletionTriggerKind,
 	CompletionParams,
-	CompletionContext,
-	RegistrationRequest,
-	DocumentOnTypeFormattingParams
 } from 'vscode-languageserver';
 import krlCompiler from 'krl-compiler';
 import krlParser from 'krl-parser';
@@ -144,7 +129,7 @@ function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
 	if (!result) {
 		result = connection.workspace.getConfiguration({
 			scopeUri: resource,
-			section: 'languageServerExample'
+			section: 'krlLanguageServer'
 		});
 		documentSettings.set(resource, result);
 	}
@@ -159,7 +144,7 @@ documents.onDidClose(e => {
 
 function updateCache(textDocument: TextDocument) {
 	let text: string = textDocument.getText();
-	let newAst: any = undefined;
+	let newAst: any =  undefined;
 	let symbolInfo: SymbolInformation[] = []
 	let completionItems: CompletionItem[] = []
 	try {
@@ -215,24 +200,8 @@ function getCachedCompletionItems(textDocumentID: TextDocumentIdentifier): Compl
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
 	(completionParams: CompletionParams): CompletionItem[] => {
-		// The pass parameter contains the position of the text document in
-		// which code complete got requested. For the example we ignore this
-		// info and always provide the same completion items.
-		let context: CompletionContext | undefined = completionParams.context
 		let textDocumentID: TextDocumentIdentifier = completionParams.textDocument
-		// If a dot is the trigger, we want to return operators in our suggestions
-		let dotPrecedes : boolean = false
-		if (context) {
-			let triggerKind: CompletionTriggerKind = context.triggerKind
-			let triggerChar: string | undefined = context.triggerCharacter
-			if (triggerKind == CompletionTriggerKind.TriggerCharacter && triggerChar == '.') {
-				dotPrecedes = true
-			}
-		}
-
-
-		return getCompletions(completionParams, dotPrecedes).concat(getCachedCompletionItems(textDocumentID))
-		
+		return getCompletions(completionParams).concat(getCachedCompletionItems(textDocumentID))
 		// [
 		// 	{
 		// 		label: 'TypeScript',
