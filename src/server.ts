@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-console.log("the server started")
 import {
 	createConnection,
 	TextDocuments,
@@ -163,15 +162,15 @@ function getCachedCompletionItems(textDocumentID: TextDocumentIdentifier): Compl
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
 	(completionParams: CompletionParams): CompletionItem[] => {
-		// let textDocumentID: TextDocumentIdentifier = completionParams.textDocument
-		// return getCompletions(completionParams).concat(getCachedCompletionItems(textDocumentID))
-		return [
-			{
-				label: 'TypeScript',
-				kind: CompletionItemKind.Text,
-				data: 1
-			}
-		];
+		let textDocumentID: TextDocumentIdentifier = completionParams.textDocument
+		return getCompletions(completionParams).concat(getCachedCompletionItems(textDocumentID))
+		// return [
+		// 	{
+		// 		label: 'TypeScript',
+		// 		kind: CompletionItemKind.Text,
+		// 		data: 1
+		// 	}
+		// ];
 	}
 );
 

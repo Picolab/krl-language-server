@@ -19,14 +19,13 @@ namespace krlDocCacheEntry {
 		}
 	}
 }
-
-export function updateCachedAnalysis(krlDocument: TextDocument, analysis: krlAnalysisResults) {
+export function updateCachedAnalysis(krlDocument: TextDocument, newAnalysis: krlAnalysisResults) {
 	let cacheEntry: krlDocCacheEntry | undefined = documentInfoCache.get(krlDocument.uri);
 	if (!cacheEntry) {
 		cacheEntry = krlDocCacheEntry.create()
 		documentInfoCache.set(krlDocument.uri, cacheEntry)
 	}
-	cacheEntry.analysisResults = analysis
+	cacheEntry.analysisResults = newAnalysis
 
 }
 

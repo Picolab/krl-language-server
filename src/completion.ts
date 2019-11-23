@@ -183,6 +183,42 @@ export function traverseAST(ast: any, alreadyMadeLabels: Set<string> = new Set(k
 	return completions
 }
 
-export function completionItemsFromLexer(tokens: Array<Object>): CompletionItem[] {
-	return []
+function makeFunctionItem(token: any): CompletionItem {
+	return	{
+		'label': token.src,
+		'detail': 'Function',
+		'kind': CompletionItemKind.Function,
+		'insertTextFormat': InsertTextFormat.PlainText,
+		'insertText': token.src + '('
+	}
+}
+function makeSymbolItem(tokenSrc: string): CompletionItem {
+	return {
+				'label': tokenSrc,
+				'detail': "Symbol",
+				'kind': CompletionItemKind.Text,
+				'insertTextFormat': InsertTextFormat.PlainText,
+				'insertText': tokenSrc 
+			}
+}
+
+export function completionItemsFromLexer(tokens: Array<any>): CompletionItem[] {
+	let completions: CompletionItem[] = []
+	// We use a set to ensure unique symbols provided back to the editor
+	let symbolSet: Set<string> = new Set()
+	for (let i = 0; i < tokens.length; i++)  {
+		let token = tokens[i]
+		let nextToken = i + 1 >= completions.length ? tokens[i + 1] : undefined
+		
+		if (token.type == 'SYMBOL') {
+			if (nextToken && nextToken.src == 'function') {
+				completions.push(makeFunctionItem(token))
+			} else {
+				symbolSet.add(token.src)
+			}
+			
+		}
+	}
+	completions = [...symbolSet].map((tokenSrc) => makeSymbolItem(tokenSrc))
+	return completions 
 }
