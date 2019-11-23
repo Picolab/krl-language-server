@@ -16,13 +16,13 @@ let KRLTypesToSymbols: Map<string, SymbolKind> = new Map([
 	['Rule', SymbolKind.Event]
 ])
 
-export function documentSymbol(document: TextDocument | undefined, ast:any): SymbolInformation[] {
-	if (!document) {return []};
-	
-	let text: String = document.getText()
-	let symbols: SymbolInformation[] = [];
-	symbols = flattenKrlAstIntoSymbols(ast, text)
+export function documentSymbolsFromLexer(krlSource : string): SymbolInformation[] {
+	return []
+}
 
+export function documentSymbolsFromAst(krlSource: string, ast:any): SymbolInformation[] {
+	let symbols: SymbolInformation[] = [];
+	symbols = flattenKrlAstIntoSymbols(ast, krlSource)
 	return symbols;
 }
 /**A helper function to generalize creating symbols.

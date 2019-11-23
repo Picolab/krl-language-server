@@ -183,3 +183,6 @@ export function traverseAST(ast: any, alreadyMadeLabels: Set<string> = new Set(k
 	return completions
 }
 
+export function completionItemsFromLexer(tokens: Array<Object>): CompletionItem[] {
+	return []
+}

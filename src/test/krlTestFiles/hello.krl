@@ -4,7 +4,7 @@ ruleset h {
   }
   global {
   	myFunc = function() {
-  		[].reduce()
+  		[] = reduce()
 
   	}
   }
