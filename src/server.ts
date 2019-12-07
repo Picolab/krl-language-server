@@ -127,6 +127,11 @@ async function processKRLDocument(document: TextDocument) {
 	console.log("Attempting to process KRL document")
 	// Analyze the new text document
 	let analysis: krlAnalysisResults = analyzeKRLDocument(document)
+	let oldAnalysis: krlAnalysisResults | undefined = getCachedAnalysis(document)
+	// Use properly parsed completion items if we couldn't parse the document
+	if (oldAnalysis && !analysis.syntaxIsValid) {
+		analysis.completionItems = oldAnalysis.completionItems
+	}
 	// update our cache with the results so that future queries on document info can be resolved
 	updateCachedAnalysis(document, analysis);
 	// connection.sendDiagnostics(analysis.diagnostics)

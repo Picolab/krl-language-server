@@ -164,16 +164,21 @@ export function traverseAST(ast: any, alreadyMadeLabels: Set<string> = new Set(k
 		}, [])
 	}
 	if (ast && isObject(ast) && ast.type) {
-		if (ast.type == 'Identifier') {
-			if (!alreadyMadeLabels.has(ast.value))  {
-				completions.push(
-					{
-						label: ast.value,
-						detail: 'Identifier',
-						kind: CompletionItemKind.Reference
-					}
-				)
-				alreadyMadeLabels.add(ast.value)
+		if (ast.type == 'Declaration' && (ast.right.type == 'Function') || (ast.right.type == 'Defaction')) {
+			completions.push(makeFunctionItemFromFuncSig(ast.left.value))
+			ast = ast.right
+		} else {
+			if (ast.type == 'Identifier') {
+				if (!alreadyMadeLabels.has(ast.value))  {
+					completions.push(
+						{
+							label: ast.value,
+							detail: 'Identifier',
+							kind: CompletionItemKind.Reference
+						}
+					)
+					alreadyMadeLabels.add(ast.value)
+				}
 			}
 		}
 		for (let prop in ast) {
@@ -183,7 +188,18 @@ export function traverseAST(ast: any, alreadyMadeLabels: Set<string> = new Set(k
 	return completions
 }
 
-function makeFunctionItem(token: any): CompletionItem {
+
+function makeFunctionItemFromFuncSig(funcName: string, parameters?: string[]) {
+	return	{
+		'label': funcName,
+		'detail': 'Function',
+		'kind': CompletionItemKind.Function,
+		'insertTextFormat': InsertTextFormat.PlainText,
+		'insertText': funcName + '('
+	}
+
+}
+function makeFunctionItemFromTok(token: any): CompletionItem {
 	return	{
 		'label': token.src,
 		'detail': 'Function',
@@ -212,7 +228,7 @@ export function completionItemsFromLexer(tokens: Array<any>): CompletionItem[] {
 		
 		if (token.type == 'SYMBOL') {
 			if (nextToken && nextToken.src == 'function') {
-				completions.push(makeFunctionItem(token))
+				completions.push(makeFunctionItemFromTok(token))
 			} else {
 				symbolSet.add(token.src)
 			}
