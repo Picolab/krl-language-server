@@ -164,7 +164,7 @@ export function traverseAST(ast: any, alreadyMadeLabels: Set<string> = new Set(k
 		}, [])
 	}
 	if (ast && isObject(ast) && ast.type) {
-		if (ast.type == 'Declaration' && (ast.right.type == 'Function') || (ast.right.type == 'Defaction')) {
+		if (ast.type == 'Declaration' && ast.right.type == 'Function') {
 			completions.push(makeFunctionItemFromFuncSig(ast.left.value))
 			ast = ast.right
 		} else {
