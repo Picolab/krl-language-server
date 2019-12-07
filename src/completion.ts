@@ -1,4 +1,4 @@
-import { CompletionItem, CompletionItemKind, TextDocumentPositionParams, Position, CompletionParams, InsertTextFormat } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, TextDocumentPositionParams, Position, CompletionParams, InsertTextFormat, CompletionContext, TextDocumentIdentifier, CompletionTriggerKind } from 'vscode-languageserver';
 import { isObject } from 'util';
 
 // Add descriptions later
@@ -131,8 +131,20 @@ const krlStructureSuggestions : CompletionItem[] = [
 	}
 ]
 
-export function getCompletions(completionParams : CompletionParams, dotPrecedes : Boolean) : CompletionItem[] {
-	let cursorPos: Position = completionParams.position
+export function getCompletions(completionParams : CompletionParams) : CompletionItem[] {
+	
+	let context: CompletionContext | undefined = completionParams.context
+		// If a dot is the trigger, we want to return operators in our suggestions
+		let dotPrecedes : boolean = false
+		if (context) {
+			let triggerKind: CompletionTriggerKind = context.triggerKind
+			let triggerChar: string | undefined = context.triggerCharacter
+			if (triggerKind == CompletionTriggerKind.TriggerCharacter && triggerChar == '.') {
+				dotPrecedes = true
+			}
+		}
+	
+	// let cursorPos: Position = completionParams.position
 	let suggestions: CompletionItem[] = []
 	suggestions = suggestions.concat(krlStructureSuggestions)
 	if (dotPrecedes) {
@@ -152,16 +164,21 @@ export function traverseAST(ast: any, alreadyMadeLabels: Set<string> = new Set(k
 		}, [])
 	}
 	if (ast && isObject(ast) && ast.type) {
-		if (ast.type == 'Identifier') {
-			if (!alreadyMadeLabels.has(ast.value))  {
-				completions.push(
-					{
-						label: ast.value,
-						detail: 'Identifier',
-						kind: CompletionItemKind.Reference
-					}
-				)
-				alreadyMadeLabels.add(ast.value)
+		if (ast.type == 'Declaration' && ast.right.type == 'Function') {
+			completions.push(makeFunctionItemFromFuncSig(ast.left.value))
+			ast = ast.right
+		} else {
+			if (ast.type == 'Identifier') {
+				if (!alreadyMadeLabels.has(ast.value))  {
+					completions.push(
+						{
+							label: ast.value,
+							detail: 'Identifier',
+							kind: CompletionItemKind.Reference
+						}
+					)
+					alreadyMadeLabels.add(ast.value)
+				}
 			}
 		}
 		for (let prop in ast) {
@@ -171,3 +188,53 @@ export function traverseAST(ast: any, alreadyMadeLabels: Set<string> = new Set(k
 	return completions
 }
 
+
+function makeFunctionItemFromFuncSig(funcName: string, parameters?: string[]) {
+	return	{
+		'label': funcName,
+		'detail': 'Function',
+		'kind': CompletionItemKind.Function,
+		'insertTextFormat': InsertTextFormat.PlainText,
+		'insertText': funcName + '('
+	}
+
+}
+function makeFunctionItemFromTok(token: any): CompletionItem {
+	return	{
+		'label': token.src,
+		'detail': 'Function',
+		'kind': CompletionItemKind.Function,
+		'insertTextFormat': InsertTextFormat.PlainText,
+		'insertText': token.src + '('
+	}
+}
+function makeSymbolItem(tokenSrc: string): CompletionItem {
+	return {
+				'label': tokenSrc,
+				'detail': "Symbol",
+				'kind': CompletionItemKind.Text,
+				'insertTextFormat': InsertTextFormat.PlainText,
+				'insertText': tokenSrc 
+			}
+}
+
+export function completionItemsFromLexer(tokens: Array<any>): CompletionItem[] {
+	let completions: CompletionItem[] = []
+	// We use a set to ensure unique symbols provided back to the editor
+	let symbolSet: Set<string> = new Set()
+	for (let i = 0; i < tokens.length; i++)  {
+		let token = tokens[i]
+		let nextToken = i + 1 >= completions.length ? tokens[i + 1] : undefined
+		
+		if (token.type == 'SYMBOL') {
+			if (nextToken && nextToken.src == 'function') {
+				completions.push(makeFunctionItemFromTok(token))
+			} else {
+				symbolSet.add(token.src)
+			}
+			
+		}
+	}
+	completions = [...symbolSet].map((tokenSrc) => makeSymbolItem(tokenSrc))
+	return completions 
+}

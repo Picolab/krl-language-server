@@ -19,11 +19,22 @@
 		"vscode-languageserver": "^4.4.2"
 	},
 	"scripts": {
+		"compile": "tsc -b && npm run krl",
+		"krl": "copyfiles -u 1 src/**/*.krl out/",
+		"test": "npm run compile && mocha ./out/test"
 	},
 	"bin": {
-		"krl-language-server" :"./out/server.js"
+		"krl-language-server": "./out/server.js"
 	},
 	"files": [
 		"./out"
-	]
+	],
+	"devDependencies": {
+		"@types/mocha": "^5.2.7",
+		"@types/node": "^12.12.12",
+		"copyfiles": "^2.1.1",
+		"file-url": "^3.0.0",
+		"mocha": "^6.2.2",
+		"typescript": "^3.7.2"
+	}
 }

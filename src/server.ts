@@ -1,37 +1,22 @@
 #!/usr/bin/env node
-
 import {
 	createConnection,
 	TextDocuments,
 	TextDocument,
-	Diagnostic,
-	DiagnosticSeverity,
 	ProposedFeatures,
 	InitializeParams,
 	DidChangeConfigurationNotification,
 	CompletionItem,
-	CompletionItemKind,
-	TextDocumentPositionParams,
-	RequestHandler,
-	DocumentSymbolParams,
 	SymbolInformation,
 	TextDocumentIdentifier,
-	SymbolKind,
-	Position,
-	Range,
-	DocumentSymbolRequest,
 	TextDocumentItem,
-	TextEdit,
-	CompletionTriggerKind,
 	CompletionParams,
-	CompletionContext,
-	RegistrationRequest,
-	DocumentOnTypeFormattingParams
+	Diagnostic,
+	CompletionItemKind,
 } from 'vscode-languageserver';
-import krlCompiler from 'krl-compiler';
-import krlParser from 'krl-parser';
-import { documentSymbol } from './documentSymbol';
-import { getCompletions, traverseAST } from './completion';
+import { getCompletions} from './completion';
+import { analyzeKRLDocument, krlAnalysisResults } from './analyze';
+import { deleteCacheEntry, getCachedAnalysis, updateCachedAnalysis } from './documentInfoCache';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -41,25 +26,6 @@ let connection = createConnection(ProposedFeatures.all);
 // supports full document sync only
 let documents: TextDocuments = new TextDocuments();
 
-interface docCache {
-	ast:any
-	symbolInformation : SymbolInformation[],
-	completionItems: CompletionItem[]
-}
-
-namespace docCache {
-	export function create(ast:any = null, symbolInfo : SymbolInformation[] = [], completionItems : CompletionItem[] = []) : docCache {
-		return {
-			ast: ast,
-			symbolInformation: symbolInfo,
-			completionItems: completionItems
-		}
-	}
-}
-
-
-
-let documentCache: Map<string, docCache> = new Map();
 
 let hasConfigurationCapability: boolean = false;
 let hasWorkspaceFolderCapability: boolean = false;
@@ -132,7 +98,7 @@ connection.onDidChangeConfiguration(change => {
 	}
 
 	// Revalidate all open text documents
-	documents.all().forEach(validateTextDocument);
+	documents.all().forEach(processKRLDocument);
 });
 
 function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
@@ -143,7 +109,7 @@ function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
 	if (!result) {
 		result = connection.workspace.getConfiguration({
 			scopeUri: resource,
-			section: 'languageServerExample'
+			section: 'krlLanguageServer'
 		});
 		documentSettings.set(resource, result);
 	}
@@ -153,137 +119,32 @@ function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
 // Only keep settings for open documents
 documents.onDidClose(e => {
 	documentSettings.delete(e.document.uri);
-	documentCache.delete(e.document.uri)
+	deleteCacheEntry(e.document)
 });
 
-function updateCache(textDocument: TextDocument) {
-	let text: string = textDocument.getText();
-	let newAst: any = undefined;
-	let symbolInfo: SymbolInformation[] = []
-	let completionItems: CompletionItem[] = []
-	try {
-		newAst = krlParser(text);
-		symbolInfo = documentSymbol(textDocument, newAst);
-		completionItems = [...new Set(traverseAST(newAst))]
-	} catch(e) {
-		 return;
+async function processKRLDocument(document: TextDocument) {
+	let settings = await getDocumentSettings(document.uri);
+	console.log("Attempting to process KRL document")
+	// Analyze the new text document
+	let analysis: krlAnalysisResults = analyzeKRLDocument(document)
+	let oldAnalysis: krlAnalysisResults | undefined = getCachedAnalysis(document)
+	// Use properly parsed completion items if we couldn't parse the document
+	if (oldAnalysis && !analysis.syntaxIsValid) {
+		analysis.completionItems = oldAnalysis.completionItems
 	}
-	if (newAst) {
-		let cache = documentCache.get(textDocument.uri);
-		if (!cache) {
-			cache = docCache.create()
-			documentCache.set(textDocument.uri, cache)
-		}
-		cache.ast = newAst;
-		cache.symbolInformation = symbolInfo
-		cache.completionItems = completionItems
-	}
+	// update our cache with the results so that future queries on document info can be resolved
+	updateCachedAnalysis(document, analysis);
+	// connection.sendDiagnostics(analysis.diagnostics)
+	console.log("Sending diagnostics")
+	connection.sendDiagnostics({ uri: document.uri, diagnostics: analysis.diagnostics});
 }
-
 
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
-	validateTextDocument(change.document);
-	updateCache(change.document);
+	let document : TextDocument = change.document
+	processKRLDocument(document)
 });
-
-async function validateTextDocument(textDocument: TextDocument): Promise<void> {
-	// In this simple example we get the settings for every validate run.
-	let settings = await getDocumentSettings(textDocument.uri);
-
-	// The validator creates diagnostics for all uppercase words length 2 and more
-	let text = textDocument.getText();
-	let problems = 0;
-	let diagnostics: Diagnostic[] = [];
-
-	// Below code structure taken from worker.js in the krl-editor of the pico-engine repo.
-	try{
-		let out = krlCompiler(text)
-		out.warnings.forEach(function(w: any){
-			diagnostics.push({
-				range: {
-					start: {
-						line: w.loc.start.line - 1,
-						character: w.loc.start.column,
-					},
-					end: {
-						line: w.loc.start.line,
-						character: 0
-					}
-				},
-				message: w.message,
-				severity: DiagnosticSeverity.Warning
-			});
-		});
-	}catch(err){
-		if(err.where && err.where.line){
-			diagnostics.push({
-				range: {
-					start: {
-						line: err.where.line - 1,
-						character: err.where.col - 1,
-					},
-					end: {
-						line: err.where.line,
-						character: 0
-					}
-				},
-				message: err + "",
-				severity: DiagnosticSeverity.Error
-			});
-		}else if(err.krl_compiler && err.krl_compiler.loc && err.krl_compiler.loc.start){
-			diagnostics.push({
-				range: {
-					start: {
-						line: err.krl_compiler.loc.start.line - 1,
-						character: err.krl_compiler.loc.start.column,
-					},
-					end: {
-						line: err.krl_compiler.loc.start.line,
-						character: 0
-					}
-				},
-				message: err + "",
-				severity: DiagnosticSeverity.Error
-			});
-		}else{
-			diagnostics.push({
-				range: {
-					start:{line:0, character:0}, end:{line:0, character:0}
-				},
-				message: err + "",
-				severity: DiagnosticSeverity.Error
-			});
-		}
-	}
-	// Below is example code for adding related information to the diagnostic
-	// if (hasDiagnosticRelatedInformationCapability) {
-	// 	diagnostic.relatedInformation = [
-	// 		{
-	// 			location: {
-	// 				uri: textDocument.uri,
-	// 				range: Object.assign({}, diagnostic.range)
-	// 			},
-	// 			message: 'Spelling matters'
-	// 		},
-	// 		{
-	// 			location: {
-	// 				uri: textDocument.uri,
-	// 				range: Object.assign({}, diagnostic.range)
-	// 			},
-	// 			message: 'Particularly for names'
-	// 		}
-	// 	];
-	// }
-	// while ((m = pattern.exec(text)) && problems < settings.maxNumberOfProblems) {
-	// 	problems++;
-		
-	// }
-
-	// Send the computed diagnostics to VSCode.
-	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
-}
 
 connection.onDidChangeWatchedFiles(_change => {
 	// Monitored files have change in VSCode
@@ -291,35 +152,24 @@ connection.onDidChangeWatchedFiles(_change => {
 });
 
 function getCachedCompletionItems(textDocumentID: TextDocumentIdentifier): CompletionItem[] {
-	let cache = documentCache.get(textDocumentID.uri);
-	if (cache) {
-		return cache.completionItems	
+	let document: TextDocument | undefined = documents.get(textDocumentID.uri)
+	let completionItems: CompletionItem[] = []
+	if (document) {
+		let analysis: krlAnalysisResults | undefined = getCachedAnalysis(document);
+		if (analysis) {
+			completionItems = analysis.completionItems
+		}
+		
 	}
-	return []
+	return completionItems
 }
 
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
 	(completionParams: CompletionParams): CompletionItem[] => {
-		// The pass parameter contains the position of the text document in
-		// which code complete got requested. For the example we ignore this
-		// info and always provide the same completion items.
-		let context: CompletionContext | undefined = completionParams.context
 		let textDocumentID: TextDocumentIdentifier = completionParams.textDocument
-		// If a dot is the trigger, we want to return operators in our suggestions
-		let dotPrecedes : boolean = false
-		if (context) {
-			let triggerKind: CompletionTriggerKind = context.triggerKind
-			let triggerChar: string | undefined = context.triggerCharacter
-			if (triggerKind == CompletionTriggerKind.TriggerCharacter && triggerChar == '.') {
-				dotPrecedes = true
-			}
-		}
-
-
-		return getCompletions(completionParams, dotPrecedes).concat(getCachedCompletionItems(textDocumentID))
-		
-		// [
+		return getCompletions(completionParams).concat(getCachedCompletionItems(textDocumentID))
+		// return [
 		// 	{
 		// 		label: 'TypeScript',
 		// 		kind: CompletionItemKind.Text,
@@ -350,14 +200,14 @@ connection.onDocumentSymbol(
 	(params): SymbolInformation[] => {
 		let documentID: TextDocumentIdentifier = params.textDocument
 		let document: TextDocument | undefined = documents.get(documentID.uri)
-		if (!document) {
-			return [];			
+		let symbols: SymbolInformation[] = []
+		if (document) {
+			let analysis = getCachedAnalysis(document)
+			if (analysis) {
+				symbols = analysis.documentSymbols
+			}
 		}
-		let cache = documentCache.get(document.uri)
-		if (cache && cache.symbolInformation) {
-			return cache.symbolInformation
-		}
-		return [];
+		return symbols
 	}
 )
 
@@ -368,7 +218,7 @@ connection.onDidOpenTextDocument((params) => {
 	// params.text the initial full content of the document.
 	let txtDocItem : TextDocumentItem = params.textDocument;
 	let textDocument : TextDocument = TextDocument.create(txtDocItem.uri, txtDocItem.languageId, txtDocItem.version, txtDocItem.text)
-	updateCache(textDocument)
+	// processKRLDocument(textDocument)
 	//connection.console.log(`${params.textDocument.uri} opened.`);
 });
 /*
