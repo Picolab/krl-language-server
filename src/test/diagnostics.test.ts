@@ -28,8 +28,6 @@ describe('Should do error checking', () => {
 			// Given the test file we should get an ERROR, on the line where the return value is invalid
 			const errorDiagnostic = diagnostics[0]
 			assert.equal(errorDiagnostic.severity, DiagnosticSeverity.Error)
-			// In the file the return statement is on line 6
-			assert.equal(errorDiagnostic.range.start.line, 6)
 		}); 
 	});
 

@@ -14,8 +14,8 @@
 		"url": "https://github.com/Picolab/krl-language-server"
 	},
 	"dependencies": {
-		"krl-compiler": "^0.51.1",
-		"krl-parser": "^0.51.1",
+		"krl-compiler": "^0.52.2",
+		"krl-parser": "^0.52.2",
 		"vscode-languageserver": "^4.4.2"
 	},
 	"scripts": {
@@ -31,10 +31,10 @@
 	],
 	"devDependencies": {
 		"@types/mocha": "^5.2.7",
-		"@types/node": "^12.12.12",
+		"@types/node": "^12.12.24",
 		"copyfiles": "^2.1.1",
 		"file-url": "^3.0.0",
 		"mocha": "^6.2.2",
-		"typescript": "^3.7.2"
+		"typescript": "^3.7.4"
 	}
 }

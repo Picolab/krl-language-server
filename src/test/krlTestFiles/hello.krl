@@ -4,8 +4,7 @@ ruleset h {
   }
   global {
   	myFunc = function() {
-  		[] = reduce()
-
+      []
   	}
   }
 
