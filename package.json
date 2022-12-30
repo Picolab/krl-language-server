@@ -34,7 +34,7 @@
 		"@types/node": "^12.12.24",
 		"copyfiles": "^2.1.1",
 		"file-url": "^3.0.0",
-		"mocha": "^6.2.2",
+		"mocha": "^10.2.0",
 		"typescript": "^3.7.4"
 	}
 }
